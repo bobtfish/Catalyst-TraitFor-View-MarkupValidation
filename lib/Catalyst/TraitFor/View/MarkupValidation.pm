@@ -4,10 +4,21 @@ use Moose::Role;
 use Template;
 use WebService::Validator::HTML::W3C;
 use Syntax::Highlight::Engine::Kate;
-
+use MooseX::Types::Moose qw/Str/;
 use namespace::autoclean;
 
 our $VERSION = '0.001';
+
+has MARKUP_VALIDATOR_URI => ( isa => Str, is => 'ro', predicate => '_has_MARKUP_VALIDATOR_URI' );
+
+after BUILD => sub {
+    my $self = shift;
+    # FIXME - Can this be a $c->log->warn
+    warn "MARKUP_VALIDATOR_URI has not been configured. Will skip Catalyst::TraitFor::View::MarkupValidation"
+        unless $self->_has_MARKUP_VALIDATOR_URI;
+};
+
+has '_validator_class' => ( isa => Str, is => 'ro', default => 'WebService::Validator::HTML::W3C' );
 
 after process => sub {
     my ( $self, $c ) = @_;
@@ -20,13 +31,7 @@ after process => sub {
         return;
     }
 
-    my $validator_uri = $c->config->{MARKUP_VALIDATOR_URI};
-    if (!$validator_uri) {
-        warn "MARKUP_VALIDATOR_URI has not been configured. Will skip Catalyst::TraitFor::View::MarkupValidation";
-        return;
-    }
-
-    my $v = WebService::Validator::HTML::W3C->new(
+    my $v = $self->_validator_class->new(
         detailed      => 1,
         validator_uri => $validator_uri
     );
@@ -37,10 +42,12 @@ after process => sub {
 
     # Don't switch to error reporting unless there are errors
     if ( $v->is_valid ) {
-        warn 'is valid';
+        warn 'is valid'; # FIXME - warn in cat log?
         return;
     }
 
+    # FIXME - $c->config bad, make an attribute instead..
+    #         I don't quite understand what's going on with \*DATA, so leaving alone
     my $template_html = $c->config->{MARKUP_VALIDATOR_REPORT_TEMPLATE} || \*DATA;
 
     my $errors = $v->errors();
