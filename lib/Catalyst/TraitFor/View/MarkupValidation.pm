@@ -18,7 +18,7 @@ after BUILD => sub {
         unless $self->_has_MARKUP_VALIDATOR_URI;
 };
 
-has '_validator_class' => ( isa => Str, is => 'ro', default => 'WebService::Validator::HTML::W3C' );
+has '_validator_class' => ( init_arg => undef, isa => Str, is => 'ro', default => 'WebService::Validator::HTML::W3C' );
 
 after process => sub {
     my ( $self, $c ) = @_;
